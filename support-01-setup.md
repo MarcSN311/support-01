@@ -35,7 +35,9 @@ SSO via Kanidm on docker-02 (`idm.mar.cloud`).
 ├── crowdsec/          # IPS, reads traefik access logs
 ├── uptime-kuma/       # uptime monitoring
 ├── ntfy/              # push notifications (GrapheneOS / F-Droid)
-└── forgejo/           # self-hosted git
+├── forgejo/           # self-hosted git
+├── beszel/            # server resource monitoring hub + agent
+└── borgmatic/         # encrypted backups to Hetzner Storage Box
 ```
 
 ---
@@ -48,6 +50,7 @@ Created once, referenced as `external` by all stacks.
 docker network create proxy
 docker network create --internal socket_proxy
 docker network create monitoring
+docker network create --internal beszel
 docker volume create traefik-logs
 ```
 
@@ -55,7 +58,8 @@ docker volume create traefik-logs
 |---------|-------|---------|---------|
 | `proxy` | external | traefik, crowdsec, all app front-ends | Traefik ↔ services |
 | `socket_proxy` | external, **internal (no egress)** | dockerproxy, traefik, uptime-kuma | isolate Docker API access |
-| `monitoring` | external | uptime-kuma, ntfy | internal container-to-container notification path |
+| `monitoring` | external | uptime-kuma, ntfy, borgmatic | internal container-to-container notification path |
+| `beszel` | external, **internal** | beszel hub, beszel-agent | hub ↔ agent isolation |
 
 | Volume | Purpose |
 |--------|---------|
@@ -182,8 +186,11 @@ docker exec -it ntfy ntfy user add --role=user ntfy-writer
 docker exec ntfy ntfy access ntfy-reader alerts read
 docker exec ntfy ntfy access ntfy-writer alerts write
 docker exec ntfy ntfy token add ntfy-reader   # → phone
-docker exec ntfy ntfy token add ntfy-writer   # → Uptime Kuma
+docker exec ntfy ntfy token add ntfy-writer   # → Uptime Kuma, borgmatic
 ```
+
+The writer token (`NTFY_TOKEN`) is shared by all internal publishers (Uptime Kuma, borgmatic).
+Do **not** put Traefik forward-auth/OIDC in front of ntfy — it breaks the app's token auth.
 
 ### Android setup (GrapheneOS, F-Droid ntfy app)
 
@@ -255,7 +262,105 @@ time with `kanidm system oauth2 show-basic-secret forgejo`.
 
 ---
 
-## 8. Footguns
+## 8. Stack: beszel
+
+Server resource monitoring at `beszel.mar.cloud`. Hub + local agent pair.
+
+**Images:** `henrygd/beszel:latest`, `henrygd/beszel-agent:latest` (pinned to 0.18.7 on upgrade)  
+**DB:** PocketBase SQLite (`./data/data.db`)  
+**Networks:** hub on `proxy` + `beszel`; agent on `beszel` only (no public access)
+
+```bash
+cp beszel/.env.example beszel/.env && chmod 600 beszel/.env
+# Set BESZEL_AGENT_KEY from the hub UI (Settings → Add system → copy ed25519 public key)
+docker compose -f /opt/stacks/beszel/compose.yaml up -d
+```
+
+In the hub UI, add the agent with host `beszel-agent` and port `45876`.  
+The agent auth key (`BESZEL_AGENT_KEY`) is the hub's public key, visible in the hub
+Settings panel. Without it the agent rejects connections.
+
+---
+
+## 9. Stack: borgmatic
+
+Encrypted daily backups to Hetzner Storage Box over SSH.
+
+**Image:** `ghcr.io/borgmatic-collective/borgmatic:2.1.6`  
+**Repo:** `ssh://u312159-sub10@u312159-sub10.your-storagebox.de:23/./support-01.borg`  
+**Encryption:** repokey (key stored in repo) + passphrase  
+**Schedule:** daily at 01:00 Europe/Berlin (cron inside container)  
+**Networks:** `monitoring` (to reach ntfy for notifications)
+
+### First-time setup
+
+```bash
+cp borgmatic/.env.example borgmatic/.env && chmod 600 borgmatic/.env
+# Set BORG_PASSPHRASE and NTFY_TOKEN
+
+# Install SSH key on storage box
+ssh-copy-id -p 23 -i borgmatic/ssh/id_ed25519.pub u312159-sub10@u312159-sub10.your-storagebox.de
+
+docker compose -f /opt/stacks/borgmatic/compose.yaml up -d
+
+# Initialise the repo (first time only)
+docker exec borgmatic borgmatic repo-create --encryption repokey
+
+# Export the key — store in password manager alongside the passphrase
+docker exec borgmatic borg key export \
+  ssh://u312159-sub10@u312159-sub10.your-storagebox.de:23/./support-01.borg
+
+# Run first backup and verify
+docker exec borgmatic borgmatic create --stats -v 1
+docker exec borgmatic borgmatic list
+```
+
+### What is backed up
+
+`/opt/stacks` (read-only bind mount at `/source/stacks`), excluding:
+
+- `*/borg-cache`, `*/borg-config` — Borg working dirs
+- `*/crowdsec/data` — runtime data, recreatable from hub
+- `*/beszel/data/backups` — PocketBase auto-backups (redundant)
+- `*/ntfy/data/cache` — ephemeral message cache
+
+SQLite databases (Forgejo, Uptime Kuma, ntfy auth, beszel) are backed up as
+live files — safe because they use WAL mode. There are no PostgreSQL databases
+on this host.
+
+### Notifications
+
+borgmatic uses its native ntfy integration to send to the `alerts` topic:
+- **start** — `⏳ Backup started` (min priority, for diagnostics)
+- **finish** — `✅ Backup complete` (default priority)
+- **fail** — `🚨 Backup FAILED` (high priority)
+
+Requires `NTFY_TOKEN` (writer token) in `.env` and borgmatic on the `monitoring` network.
+
+### Runbook: manual backup / restore
+
+```bash
+# Force a run now
+docker exec borgmatic borgmatic create --stats -v 1
+
+# List archives
+docker exec borgmatic borgmatic list
+
+# List files in an archive
+docker exec borgmatic borgmatic list --archive support-01-2026-06-28T21:08:58.635857
+
+# Restore a single file
+docker exec borgmatic borgmatic extract \
+  --archive support-01-2026-06-28T21:08:58.635857 \
+  --path source/stacks/forgejo/borgmatic.d/config.yaml
+
+# Check repo integrity
+docker exec borgmatic borgmatic check
+```
+
+---
+
+## 10. Footguns
 
 - **`prefer-short-username`** must be set on kanidm OAuth2 clients or Forgejo
   rejects the username (Kanidm returns `user@domain` by default; `@` is invalid
