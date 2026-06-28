@@ -9,3 +9,7 @@ crowdsec/data/
 uptime-kuma/data/
 ntfy/data/
 forgejo/data/
+beszel/data/
+borgmatic/ssh/
+borgmatic/borg-config/
+borgmatic/borg-cache/

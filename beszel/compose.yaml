@@ -1,0 +1,37 @@
+name: beszel
+
+services:
+  beszel:
+    image: henrygd/beszel:latest
+    container_name: beszel
+    restart: unless-stopped
+    volumes:
+      - ./data:/beszel_data
+    networks:
+      - proxy
+      - beszel
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.beszel.rule=Host(`beszel.mar.cloud`)
+      - traefik.http.routers.beszel.entrypoints=websecure
+      - traefik.http.routers.beszel.tls.certresolver=le
+      - traefik.http.services.beszel.loadbalancer.server.port=8090
+
+  beszel-agent:
+    image: henrygd/beszel-agent:latest
+    container_name: beszel-agent
+    restart: unless-stopped
+    hostname: support-01
+    environment:
+      - KEY=${BESZEL_AGENT_KEY}
+      - LISTEN=:45876
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - beszel
+
+networks:
+  proxy:
+    external: true
+  beszel:
+    external: true

@@ -1,0 +1,18 @@
+name: borgmatic
+
+services:
+  borgmatic:
+    image: ghcr.io/borgmatic-collective/borgmatic:2.1.6
+    container_name: borgmatic
+    hostname: support-01
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Berlin
+      - BORG_PASSPHRASE=${BORG_PASSPHRASE}
+    volumes:
+      - ./borgmatic.d:/etc/borgmatic.d
+      - ./ssh:/root/.ssh
+      - ./borg-config:/root/.config/borg
+      - ./borg-cache:/root/.cache/borg
+      # data to back up (read-only):
+      - /opt/stacks:/source/stacks:ro

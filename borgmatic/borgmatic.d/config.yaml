@@ -1,0 +1,28 @@
+repositories:
+  - path: ssh://u312159-sub10@u312159-sub10.your-storagebox.de:23/./support-01.borg
+    label: storagebox
+
+source_directories:
+  - /source/stacks
+
+exclude_patterns:
+  - '*/borg-cache'
+  - '*/borg-config'
+  - '*/.cache'
+  - '*/crowdsec/data'          # CrowdSec runtime data, recreatable
+  - '*/beszel/data/backups'    # Beszel PocketBase auto-backups, redundant
+  - '*/ntfy/data/cache'        # ntfy message cache, ephemeral
+
+ssh_command: ssh -p 23 -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new
+
+encryption_passphrase: ${BORG_PASSPHRASE}
+
+keep_daily: 7
+keep_weekly: 4
+keep_monthly: 6
+
+checks:
+  - name: repository
+    frequency: 2 weeks
+
+relocated_repo_access_is_ok: true
