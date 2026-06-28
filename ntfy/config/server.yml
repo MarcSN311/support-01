@@ -1,0 +1,23 @@
+base-url: "https://ntfy.mar.cloud"
+
+# Listen on all interfaces, no TLS (Traefik terminates)
+listen-http: ":80"
+
+# Auth — deny everything by default; explicit tokens required
+auth-default-access: "deny-all"
+auth-file: "/var/lib/ntfy/auth.db"
+
+# Cache
+cache-file: "/var/cache/ntfy/cache.db"
+cache-duration: "12h"
+
+# Attachments disabled (no storage box wired here)
+attachment-cache-dir: ""
+
+# Rate limits — public server, keep these tight
+visitor-subscription-limit: 10
+visitor-request-limit-burst: 60
+visitor-request-limit-replenish: "10s"
+visitor-message-daily-limit: 250
+
+# No upstream-base-url — GrapheneOS has no FCM/Play Services

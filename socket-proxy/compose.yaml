@@ -1,0 +1,24 @@
+name: socket-proxy
+
+services:
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy:v0.4.2
+    container_name: dockerproxy
+    restart: unless-stopped
+    environment:
+      - CONTAINERS=1
+      - NETWORKS=1
+      - SERVICES=1
+      - TASKS=1
+      - EVENTS=1
+      - PING=1
+      - VERSION=1
+      - POST=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket_proxy
+
+networks:
+  socket_proxy:
+    external: true

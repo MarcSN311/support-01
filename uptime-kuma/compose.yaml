@@ -1,0 +1,29 @@
+name: uptime-kuma
+
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:2.4.0
+    container_name: uptime-kuma
+    restart: unless-stopped
+    environment:
+      - DOCKER_HOST=tcp://dockerproxy:2375
+    volumes:
+      - ./data:/app/data
+    networks:
+      - proxy
+      - socket_proxy
+      - monitoring
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.uptime-kuma.rule=Host(`uptime.mar.cloud`)
+      - traefik.http.routers.uptime-kuma.entrypoints=websecure
+      - traefik.http.routers.uptime-kuma.tls.certresolver=le
+      - traefik.http.services.uptime-kuma.loadbalancer.server.port=3001
+
+networks:
+  proxy:
+    external: true
+  socket_proxy:
+    external: true
+  monitoring:
+    external: true

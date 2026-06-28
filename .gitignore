@@ -1,0 +1,10 @@
+# Secrets and state — never commit
+.env
+.claude/
+traefik/acme/acme.json
+traefik/dynamic/middlewares.yml
+traefik/dynamic/users.htpasswd
+traefik/dynamic/kanidm-ca.crt
+crowdsec/data/
+uptime-kuma/data/
+ntfy/data/

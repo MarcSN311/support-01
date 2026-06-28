@@ -1,0 +1,6 @@
+http:
+  serversTransports:
+    kanidm:
+      serverName: idm.mar.cloud
+      rootCAs:
+        - /dynamic/kanidm-ca.crt

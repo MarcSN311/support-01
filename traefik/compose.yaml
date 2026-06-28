@@ -1,0 +1,53 @@
+services:
+  traefik:
+    container_name: traefik
+    image: traefik:v3.7.5
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=proxy
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.storage=/acme/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge=true
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --api.dashboard=true
+      - --providers.file.directory=/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.websecure.http.middlewares=secure-headers@file,crowdsec@file
+      - --accesslog=true
+      - --accesslog.filepath=/logs/access.log
+      - --experimental.plugins.bouncer.modulename=github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      - --experimental.plugins.bouncer.version=v1.6.0
+      - --providers.docker.endpoint=tcp://dockerproxy:2375
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.rule=Host(`traefik.support-01.cloud.mar.cloud`)
+      - traefik.http.routers.dashboard.entrypoints=websecure
+      - traefik.http.routers.dashboard.tls.certresolver=le
+      - traefik.http.routers.dashboard.service=api@internal
+      - traefik.http.routers.dashboard.middlewares=dashboard-auth@file,rate-limit@file
+    volumes:
+      - ./acme:/acme
+      - ./dynamic:/dynamic:ro
+      - traefik-logs:/logs
+    networks:
+      - proxy
+      - socket_proxy
+
+volumes:
+  traefik-logs:
+    external: true
+
+networks:
+  proxy:
+    external: true
+  socket_proxy:
+    external: true

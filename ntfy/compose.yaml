@@ -1,0 +1,29 @@
+name: ntfy
+
+services:
+  ntfy:
+    image: binwiederhier/ntfy:v2.25.0
+    container_name: ntfy
+    restart: unless-stopped
+    command: serve
+    environment:
+      - TZ=Europe/Berlin
+    volumes:
+      - ./config/server.yml:/etc/ntfy/server.yml:ro
+      - ./data/cache:/var/cache/ntfy
+      - ./data/auth:/var/lib/ntfy
+    networks:
+      - proxy
+      - monitoring
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ntfy.rule=Host(`ntfy.mar.cloud`)
+      - traefik.http.routers.ntfy.entrypoints=websecure
+      - traefik.http.routers.ntfy.tls.certresolver=le
+      - traefik.http.services.ntfy.loadbalancer.server.port=80
+
+networks:
+  proxy:
+    external: true
+  monitoring:
+    external: true

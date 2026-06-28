@@ -1,0 +1,29 @@
+http:
+  middlewares:
+    secure-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: false
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: strict-origin-when-cross-origin
+        customFrameOptionsValue: SAMEORIGIN
+    rate-limit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1s
+    dashboard-auth:
+      basicAuth:
+        usersFile: "/dynamic/users.htpasswd"
+    crowdsec:
+      plugin:
+        bouncer:
+          enabled: true
+          crowdsecMode: stream
+          crowdsecLapiHost: crowdsec:8080
+          crowdsecLapiScheme: http
+          crowdsecLapiKey: "REPLACE_WITH_BOUNCER_KEY"
+          #clientTrustedIPs:
+          #  - "YOUR_HOME_OR_WG_IP/32"
