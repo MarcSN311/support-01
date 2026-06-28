@@ -81,6 +81,11 @@ beszel-agent    henrygd/beszel-agent     local agent (also updated to 0.18.7)
 Do these in order. Each step should end with configs on disk under `/opt/stacks/`
 and committed to git.
 
+### -1. Backups (borgmatic) — DONE
+- borgmatic 2.1.6, daily at 01:00, repo at `support-01.borg` on `u312159-sub10`.
+- Borg key exported — store in password manager with passphrase.
+- Old `/data/compose/51/` can now be removed (beszel migrated + backed up).
+
 ### 0. Cleanup — DONE
 - Portainer agent removed.
 - Beszel + beszel-agent updated to 0.18.7 in place for evaluation.
