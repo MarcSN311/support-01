@@ -8,3 +8,4 @@ traefik/dynamic/kanidm-ca.crt
 crowdsec/data/
 uptime-kuma/data/
 ntfy/data/
+forgejo/data/

@@ -1,0 +1,40 @@
+name: forgejo
+
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:15-rootless
+    container_name: forgejo
+    restart: unless-stopped
+    ports:
+      - "222:2222"
+    environment:
+      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__database__PATH=/var/lib/gitea/data/forgejo.db
+      - FORGEJO__server__DOMAIN=git.mar.cloud
+      - FORGEJO__server__ROOT_URL=https://git.mar.cloud
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__server__SSH_DOMAIN=git.mar.cloud
+      - FORGEJO__server__SSH_PORT=222
+      - FORGEJO__server__SSH_LISTEN_PORT=2222
+      - FORGEJO__server__START_SSH_SERVER=true
+      - FORGEJO__security__SECRET_KEY=${SECRET_KEY}
+      - FORGEJO__security__INSTALL_LOCK=true
+      - FORGEJO__service__DISABLE_REGISTRATION=false
+      - FORGEJO__service__ALLOW_ONLY_EXTERNAL_REGISTRATION=true
+      - FORGEJO__openid__ENABLE_OPENID_SIGNIN=false
+      - FORGEJO__openid__ENABLE_OPENID_SIGNUP=false
+      - TZ=Europe/Berlin
+    volumes:
+      - ./data:/var/lib/gitea
+    networks:
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.forgejo.rule=Host(`git.mar.cloud`)
+      - traefik.http.routers.forgejo.entrypoints=websecure
+      - traefik.http.routers.forgejo.tls.certresolver=le
+      - traefik.http.services.forgejo.loadbalancer.server.port=3000
+
+networks:
+  proxy:
+    external: true
