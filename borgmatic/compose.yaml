@@ -9,6 +9,7 @@ services:
     environment:
       - TZ=Europe/Berlin
       - BORG_PASSPHRASE=${BORG_PASSPHRASE}
+      - NTFY_TOKEN=${NTFY_TOKEN}
     volumes:
       - ./borgmatic.d:/etc/borgmatic.d
       - ./ssh:/root/.ssh
@@ -16,3 +17,9 @@ services:
       - ./borg-cache:/root/.cache/borg
       # data to back up (read-only):
       - /opt/stacks:/source/stacks:ro
+    networks:
+      - monitoring
+
+networks:
+  monitoring:
+    external: true

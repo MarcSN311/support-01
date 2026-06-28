@@ -17,6 +17,25 @@ ssh_command: ssh -p 23 -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-
 
 encryption_passphrase: ${BORG_PASSPHRASE}
 
+after_backup:
+  - |
+    curl -s -o /dev/null \
+      -H "Authorization: Bearer ${NTFY_TOKEN}" \
+      -H "Title: Backup complete" \
+      -H "Tags: white_check_mark" \
+      -d "support-01 backup finished successfully." \
+      http://ntfy:80/alerts
+
+on_error:
+  - |
+    curl -s -o /dev/null \
+      -H "Authorization: Bearer ${NTFY_TOKEN}" \
+      -H "Title: Backup FAILED" \
+      -H "Tags: warning" \
+      -H "Priority: high" \
+      -d "support-01 borgmatic backup failed! Check logs: docker logs borgmatic" \
+      http://ntfy:80/alerts
+
 keep_daily: 7
 keep_weekly: 4
 keep_monthly: 6
