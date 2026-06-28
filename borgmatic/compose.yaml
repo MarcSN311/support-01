@@ -15,8 +15,8 @@ services:
       - ./ssh:/root/.ssh
       - ./borg-config:/root/.config/borg
       - ./borg-cache:/root/.cache/borg
-      # data to back up (read-only):
-      - /opt/stacks:/source/stacks:ro
+      # rw required: sqlite3 needs to write -shm lock files even for read-only dumps
+      - /opt/stacks:/source/stacks
     networks:
       - monitoring
 

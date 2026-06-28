@@ -9,9 +9,33 @@ exclude_patterns:
   - '*/borg-cache'
   - '*/borg-config'
   - '*/.cache'
-  - '*/crowdsec/data'          # CrowdSec runtime data, recreatable
-  - '*/beszel/data/backups'    # Beszel PocketBase auto-backups, redundant
-  - '*/ntfy/data/cache'        # ntfy message cache, ephemeral
+  - '*/crowdsec/data'             # CrowdSec runtime data, recreatable
+  - '*/beszel/data/backups'       # PocketBase auto-backups, redundant
+  - '*/ntfy/data/cache'           # ntfy message cache, ephemeral
+  # SQLite raw files — dumped consistently via sqlite_databases hook instead
+  - '*/forgejo/data/data/forgejo.db'
+  - '*/forgejo/data/data/forgejo.db-wal'
+  - '*/forgejo/data/data/forgejo.db-shm'
+  - '*/uptime-kuma/data/kuma.db'
+  - '*/uptime-kuma/data/kuma.db-wal'
+  - '*/uptime-kuma/data/kuma.db-shm'
+  - '*/ntfy/data/auth/auth.db'
+  - '*/beszel/data/data.db'
+  - '*/beszel/data/data.db-wal'
+  - '*/beszel/data/data.db-shm'
+  - '*/beszel/data/auxiliary.db'
+
+sqlite_databases:
+  - name: forgejo
+    path: /source/stacks/forgejo/data/data/forgejo.db
+  - name: uptime-kuma
+    path: /source/stacks/uptime-kuma/data/kuma.db
+  - name: ntfy-auth
+    path: /source/stacks/ntfy/data/auth/auth.db
+  - name: beszel
+    path: /source/stacks/beszel/data/data.db
+  - name: beszel-auxiliary
+    path: /source/stacks/beszel/data/auxiliary.db
 
 ssh_command: ssh -p 23 -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=accept-new
 

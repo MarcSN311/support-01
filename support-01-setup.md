@@ -317,16 +317,33 @@ docker exec borgmatic borgmatic list
 
 ### What is backed up
 
-`/opt/stacks` (read-only bind mount at `/source/stacks`), excluding:
+`/opt/stacks` (bind mount at `/source/stacks`) excluding raw SQLite files and
+ephemeral data. SQLite databases are dumped consistently via borgmatic's
+`sqlite_databases` hook (runs `sqlite3 .dump` into a SQL file before archiving),
+which avoids torn reads if a WAL checkpoint fires mid-archive.
 
+| DB name | Source path |
+|---------|-------------|
+| `forgejo` | `forgejo/data/data/forgejo.db` |
+| `uptime-kuma` | `uptime-kuma/data/kuma.db` |
+| `ntfy-auth` | `ntfy/data/auth/auth.db` |
+| `beszel` | `beszel/data/data.db` |
+| `beszel-auxiliary` | `beszel/data/auxiliary.db` |
+
+Dumps land in the archive at `borgmatic/sqlite_databases/localhost/<name>`.
+
+Also excluded from the file tree (redundant or ephemeral):
 - `*/borg-cache`, `*/borg-config` — Borg working dirs
 - `*/crowdsec/data` — runtime data, recreatable from hub
-- `*/beszel/data/backups` — PocketBase auto-backups (redundant)
+- `*/beszel/data/backups` — PocketBase auto-backups, redundant
 - `*/ntfy/data/cache` — ephemeral message cache
+- All `*.db`, `*.db-wal`, `*.db-shm` files listed above (dumped via hook instead)
 
-SQLite databases (Forgejo, Uptime Kuma, ntfy auth, beszel) are backed up as
-live files — safe because they use WAL mode. There are no PostgreSQL databases
-on this host.
+There are no PostgreSQL databases on this host.
+
+> **Note:** the stacks bind mount is **not** `:ro` — sqlite3 needs to write
+> `-shm` lock files even when reading WAL-mode databases. borgmatic does not
+> write to any source files.
 
 ### Notifications
 
@@ -347,11 +364,22 @@ docker exec borgmatic borgmatic create --stats -v 1
 docker exec borgmatic borgmatic list
 
 # List files in an archive
-docker exec borgmatic borgmatic list --archive support-01-2026-06-28T21:08:58.635857
+docker exec borgmatic borgmatic list --archive <archive-name>
 
-# Restore a single file
+# Restore a SQLite database dump from an archive
+ARCHIVE=support-01-2026-06-28T21:42:31.213763
+docker exec borgmatic sh -c "
+  borg extract \
+    'ssh://u312159-sub10@u312159-sub10.your-storagebox.de:23/./support-01.borg::$ARCHIVE' \
+    borgmatic/sqlite_databases/localhost/ntfy-auth \
+    --stdout 2>/dev/null \
+  | sqlite3 /tmp/ntfy-auth-restored.db
+"
+# Then verify: docker exec borgmatic sqlite3 /tmp/ntfy-auth-restored.db '.tables'
+
+# Restore a config file (non-DB)
 docker exec borgmatic borgmatic extract \
-  --archive support-01-2026-06-28T21:08:58.635857 \
+  --archive <archive-name> \
   --path source/stacks/forgejo/borgmatic.d/config.yaml
 
 # Check repo integrity
